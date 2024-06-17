@@ -361,10 +361,10 @@ predicted_accuracy <- function(p_lapse, beta_d, beta_s, fn, df, ...) {
   p_correct
 }
 
-loss_Fexp <- function(p, sbj) {
+loss_FP <- function(p, sbj) {
   
   df = tgt %>% filter(participant == sbj) 
-  pred = predicted_accuracy(p_lapse = p[1], beta_d = p[2], beta_s = p[3], fn = Fexp, df = df)  
+  pred = predicted_accuracy(p_lapse = p[1], beta_d = p[2], beta_s = p[3], d_pow = p[4], s_pow = p[5], fn = FP, df = df)  
   error = pred - (as.numeric(df$success_trial) - 1)
   likelihood <- ifelse(df$success_trial == 1,
                        pred,
@@ -378,10 +378,10 @@ FP = function(x,y, beta_d, beta_s, d_pow, s_pow) exp(-(beta_d*x)**d_pow)*exp(-(b
 
 
 # initial values
-x0 = c(.05, .1, .1)
+x0 = c(.05, .1, .1, 1, 1)
 # lower and upper
-lb = c(1.0e-10, 1.0e-10, 1.0e-10)
-ub = c(1, 1, 1)
+lb = c(1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10, 1.0e-10)
+ub = c(1, 1, 1, 5, 5)
 maxeval = 1000 # iterations
 
 get_direct <- function(sbj) {
@@ -390,7 +390,7 @@ get_direct <- function(sbj) {
                "xtol_abs"=1.0e-10,
                "maxeval"=maxeval)
   res_DIRECT_L <- nloptr( x0=x0, 
-                  eval_f=loss_Fexp, 
+                  eval_f=loss_FP, 
                   lb = lb, 
                   ub = ub, 
                   opts = opts_DIRECT_L,
@@ -398,12 +398,21 @@ get_direct <- function(sbj) {
                  )
 }
 
-dir_res <- lapply(c(1,2,4:10), get_direct)
+dir_res_FP <- lapply(c(1,2,4:10), get_direct)
 
-res_direct <- lapply(dir_res, function(d) data.frame(p_lapse = d$solution[1], beta_d = d$solution[2], beta_s = d$solution[3], loglik = -d$objective)) %>%
+res_direct_FP <- lapply(dir_res_FP, function(d) data.frame(p_lapse = d$solution[1], beta_d = d$solution[2], beta_s = d$solution[3], d_pow = d$solution[4], s_pow = d$solution[5], loglik = -d$objective)) %>%
   bind_rows() %>%
   mutate(participant = c(1,2,4:10)) %>%
-  select(participant, beta_d, beta_s, p_lapse, loglik)
+  select(participant, beta_d, beta_s, d_pow, s_pow, p_lapse, loglik)
+
+# Fexp is much better for participants 4 and 8 (loglik difference >= 5); FP only slightly better for 4 participants (diff <= 2)
+bind_rows(res_direct %>% mutate(model = "Fexp"), res_direct_FP %>% mutate(model = "FP")) %>%
+  select(model, participant, loglik) %>%
+  spread(model, loglik) %>%
+  mutate(diff = Fexp - FP)
+
+bind_rows(res_direct %>% mutate(model = "Fexp"), res_direct_FP %>% mutate(model = "FP")) %>%
+  ggplot(aes(participant, loglik, color = model)) + geom_point()
 
 ```
 
