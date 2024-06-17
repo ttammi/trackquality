@@ -280,7 +280,6 @@ m %>%
 
 # Model: Power of 2 (Fexp) + global optimization
 
-(add model comparisons)
 
 ```{r}
 
@@ -351,12 +350,72 @@ res_direct %>%
 ```
 
 
+### Model comparison
+
+
+```{r}
+predicted_accuracy <- function(p_lapse, beta_d, beta_s, fn, df, ...) { 
+  p_chance = 1/4
+  p_F = fn(df$abs_displ, df$abs_speed_diff, beta_d, beta_s, ...)
+  p_correct = (1 - p_chance)*(1-p_lapse)*p_F + p_chance
+  p_correct
+}
+
+loss_Fexp <- function(p, sbj) {
+  
+  df = tgt %>% filter(participant == sbj) 
+  pred = predicted_accuracy(p_lapse = p[1], beta_d = p[2], beta_s = p[3], fn = Fexp, df = df)  
+  error = pred - (as.numeric(df$success_trial) - 1)
+  likelihood <- ifelse(df$success_trial == 1,
+                       pred,
+                       1-pred)
+  -sum(log(likelihood))
+  
+}
+
+FP = function(x,y, beta_d, beta_s, d_pow, s_pow) exp(-(beta_d*x)**d_pow)*exp(-(beta_s*y)**s_pow) 
+
+
+
+# initial values
+x0 = c(.05, .1, .1)
+# lower and upper
+lb = c(1.0e-10, 1.0e-10, 1.0e-10)
+ub = c(1, 1, 1)
+maxeval = 1000 # iterations
+
+get_direct <- function(sbj) {
+  
+  opts_DIRECT_L <- list("algorithm"= "NLOPT_GN_DIRECT_L",
+               "xtol_abs"=1.0e-10,
+               "maxeval"=maxeval)
+  res_DIRECT_L <- nloptr( x0=x0, 
+                  eval_f=loss_Fexp, 
+                  lb = lb, 
+                  ub = ub, 
+                  opts = opts_DIRECT_L,
+                 sbj = sbj
+                 )
+}
+
+dir_res <- lapply(c(1,2,4:10), get_direct)
+
+res_direct <- lapply(dir_res, function(d) data.frame(p_lapse = d$solution[1], beta_d = d$solution[2], beta_s = d$solution[3], loglik = -d$objective)) %>%
+  bind_rows() %>%
+  mutate(participant = c(1,2,4:10)) %>%
+  select(participant, beta_d, beta_s, p_lapse, loglik)
+
+```
+
+
+
+
 # Visualization
 
 ```{r}
 (pred_obs_sbj <- tgt %>%
   left_join(res_direct %>% mutate(participant = factor(participant))) %>%
-  mutate(pred = .25 +  (1 - .25 - p_lapse) * Fexp(abs_displ, abs_speed_diff, beta_d, beta_s),
+  mutate(pred = .25 +  (1 - .25)*(1-p_lapse) * Fexp(abs_displ, abs_speed_diff, beta_d, beta_s),
          tq = Fexp(abs_displ, abs_speed_diff, beta_d, beta_s)) %>%
   mutate(dbin = cut(abs_displ, breaks = c(0, 1, 5, 15, 25), include.lowest = T), # cut_number(abs_displ, 4, boundary = 0),
          sbin = cut(abs_speed_diff, breaks = c(0, 2, 30, 300), include.lowest = T) # cut_number(abs_speed_diff, 3, boundary = 0)
@@ -415,9 +474,9 @@ sr <- tgt %>%
 plines <- sr %>% distinct(slippage, smean, smid, smedian, smin, smax) %>%
   merge(data.frame(abs_displ = seq(0, 10, by = .1))) %>%
   cross_join(res_means) %>%
-  mutate(pred = .25 +  (1 - .25 - p_lapse) * Fexp(abs_displ, smean, beta_d, beta_s),
-         pred_min = .25 +  (1 - .25 - p_lapse) * Fexp(abs_displ, smin, beta_d, beta_s),
-         pred_max = .25 +  (1 - .25 - p_lapse) * Fexp(abs_displ, smax, beta_d, beta_s),
+  mutate(pred = .25 + (1 - .25)*(1-p_lapse) * Fexp(abs_displ, smean, beta_d, beta_s),
+         pred_min = .25 +  (1 - .25)*(1-p_lapse) * Fexp(abs_displ, smin, beta_d, beta_s),
+         pred_max = .25 +  (1 - .25)*(1-p_lapse) * Fexp(abs_displ, smax, beta_d, beta_s),
          tq = Fexp(abs_displ, smean, beta_d, beta_s)) 
 
 
@@ -444,7 +503,7 @@ sr2 <- tgt %>%
 plines2 <- sr2 %>% distinct(participant, slippage, smean, smedian) %>%
   merge(data.frame(abs_displ = seq(0, 10, by = .1))) %>%
   full_join(res_direct %>% mutate(participant = factor(participant))) %>%
-  mutate(pred = .25 +  (1 - .25 - p_lapse) * Fexp(abs_displ, smedian, beta_d, beta_s),
+  mutate(pred = .25 + (1 - .25)*(1-p_lapse) * Fexp(abs_displ, smedian, beta_d, beta_s),
          tq = Fexp(abs_displ, smean, beta_d, beta_s))  
 
 
