@@ -3,7 +3,8 @@ title: "Tracking quality results"
 output: html_notebook
 ---
 
-```{r setup}
+
+```{r}
 
 library(tidyverse)
 library(nloptr)
@@ -16,12 +17,23 @@ sbj_cols <- ggsci::pal_d3("category10")(10)[c(1,2,4:10)]
 
 update_geom_defaults("point", list(shape = 16))
 
+sr_theme <- theme_classic(base_size = 11) +
+  theme(legend.background = element_rect(fill = "transparent", colour = NA),
+        legend.box.background = element_rect(fill = "transparent", colour = NA),
+        plot.title = element_text(size = 12, face = "plain", hjust = .5),
+        axis.text=element_text(size=11), 
+        axis.title=element_text(size=12),
+        legend.text=element_text(size=11),
+        plot.subtitle = element_text(face = "bold", size = 12))
+
+# full column width 18.3 cm
+cw = 18.3
+
 ```
 
 
 # Fig 1: example trial
 
-same color coding (pre-launch, preview, occlusion) in other figures?
 
 ```{r}
 # position
@@ -41,30 +53,36 @@ same color coding (pre-launch, preview, occlusion) in other figures?
   labs(x = "", y = "Horizontal position (deg)", linetype = "") +
   scale_x_continuous(breaks = c(-.5, 0, .5, 1.0)) +
   xlim(-.5,1.3) +
+  ylim(-.1, 42.2) +
+  sr_theme +
   theme(legend.position = c(.85,.3),
-        plot.margin = unit(c(0, 0, 0, 0), 'lines'),
-        axis.text.x = element_blank()))
+        plot.margin = unit(c(0.1, 0, 0, 0), 'lines'),
+        axis.text.x = element_blank(),
+        axis.title.y = element_text(hjust = .15)))
 
 
 (p2 <- p  + 
   geom_bracket(xmin = -.5, xmax = -0.005, y.position = 10,
-    label = "pre-launch 1s", tip.length = c(0, .05), color = "royalblue4", label.size=4.2) + 
+    label = "pre-launch 1 s", tip.length = c(0, .02), color = "royalblue4", label.size=4) + 
   geom_bracket(xmin = 0, xmax = 0.365990878, y.position = 20,
-    label = "preview 0.2-1s", tip.length = c(0.07, 0.02), color = "#5c5c5c", label.size=4.2)  + 
-  geom_bracket(xmin = 0.365990878, xmax = 1.12, y.position = 40.8,
-    label = "occlusion 0-1.9s", tip.length = c(0.07, 0.015), color = "orangered3", label.size=4.2, hjust=.7)  + 
+    label = "preview 0.2-1 s", tip.length = .02, color = "#5c5c5c", label.size=4)  + 
+  geom_bracket(xmin = 0.365990878, xmax = 1.12, y.position = 40.7,
+    label = "occlusion 0-1.9 s", tip.length = .02, color = "orangered3", label.size=4, hjust=.7)  + 
   geom_bracket(xmin = 1.129982686, xmax = 1.129982686+.05, y.position = 41.1,
-    label = "target 0.05s", tip.length = .01, color = "#5c5c5c", label.size=4.18,hjust=.66))
+    label = "target 0.05 s", tip.length = .02, color = "#5c5c5c", label.size=4,hjust=.66))
 
 (p3 <- p2 + annotate("text", x = -.19, y = 6, label = "anticipatory pursuit", color = "royalblue4") +
-  annotate("curve", x = -.20, y = 5, xend = -.18, yend = 1.3,
+  annotate("curve", x = -.20, y = 4.9, xend = -.18, yend = 1.3,
     arrow = arrow(length = unit(0.08, "inch")), #size = 0.2,
     color = "royalblue4", curvature = 0) + 
-  annotate("text", x = .43, y = 4.2, label = "catch-up\nsaccade", color = "#5c5c5c") +
+  annotate("text", x = .53, y = 4.2, label = "catch-up saccade", color = "#5c5c5c") +
   annotate("curve", x = .34, y = 4, xend = .22, yend = 4.8,
     arrow = arrow(length = unit(0.08, "inch")), #size = 0.2,
-    color = "#5c5c5c", curvature = 0))
-
+    color = "#5c5c5c", curvature = 0) + 
+  annotate("text", x = .33, y = 28.5, label = "anticipatory saccade", color = "orangered3") +
+  annotate("curve", x = .51, y = 26, xend = .6, yend = 23,
+    arrow = arrow(length = unit(0.08, "inch")), #size = 0.2,
+    color = "orangered3", curvature = 0))
 
 
 # gain
@@ -74,7 +92,7 @@ same color coding (pre-launch, preview, occlusion) in other figures?
   filter(trial_ts > -.5, trial_ts < 1.129982686 + .05, target_class %in% c("visible", "occluded")) %>% 
    mutate(block = factor(block)) %>%
   arrange(trial_ts) %>%
-  mutate(gain = gaze_speed_2/target_speed) %>%
+  mutate(gain = gaze_speed/target_speed) %>%
   mutate(target_class = str_to_title(target_class)) %>%
   ggplot() + 
   geom_line(aes(trial_ts, gain, color = target_class %>% fct_rev, group = tn_linear), size=.3, alpha = .2) +
@@ -84,26 +102,30 @@ same color coding (pre-launch, preview, occlusion) in other figures?
   scale_x_continuous(breaks = c(-.5, 0, .5, 1.0), limits = c(-.5,1.3)) +
   scale_color_manual(values = c("orangered3", "#5c5c5c") %>% rev) +
   ylim(0,6) +
-  guides(color = guide_legend(override.aes = list(alpha = 1))) +
+  guides(color = guide_legend(override.aes = list(alpha = 1, linewidth = .5))) +
+    sr_theme +
   theme(legend.position = c(.2, .7),
         plot.margin = unit(c(0, 0, 0, 0), 'lines')))
 
 
-(trial_both <- ggarrange(p3, p4, ncol = 1, heights = c(1, .6), 
-               align = "hv", common.legend = F)) 
+(trial_both <- ggarrange(p3 + labs(subtitle="a"), p4 + labs(subtitle = "b"), 
+                         ncol = 1, heights = c(1, .6), 
+                         #labels = "auto",
+                         align = "hv", common.legend = F)) 
 
 ```
 
+```{r}
+ggsave(filename="sr_figures/trial_both.pdf", plot=trial_both, width=cw, height = 10, units = "cm")
+
+```
+
+
 # Fig 2
-
-- clarify labelling: separate axis labels (time from launch (s) similar to Fig1, and time from occlusion onset). Facet labels: Target visible, target occluded? (also for fig1 and fig3? ("visually guided" is perhaps not good; better just to say what we know i.e. target is visible or not.))
-- align the axis scales
-- fix smoothing of means
-
 
 ```{r}
 # # Need to make timestamps regular for the mean lines.
-new_sr = 1/120
+new_sr = 1/60
   
 resample <- function(trialdata, start_time) { # start_time = -.5 for visible, 0 for occluded
   # irregular time points at which data was sampled
@@ -172,113 +194,172 @@ m <- plotdata %>%
   arrange(newts) %>%
   nest() %>% 
   mutate(data = map(data, ~ .x %>% 
-                      mutate(rm_pos_displ = rollapply(m_pos_displ, 12, mean, partial = TRUE, align = "center"),
-                             rm_speed_diff = rollapply(m_speed_diff, 12, mean, partial = TRUE, align = "center"))
+                      mutate(rm_pos_displ = rollapply(m_pos_displ, 9, mean, partial = TRUE, align = "center"),
+                             rm_speed_diff = rollapply(m_speed_diff, 9, mean, partial = TRUE, align = "center"))
                     )
          ) %>%
   unnest() %>%
-  left_join(sr)
+  left_join(sr) 
+
+
 
 ```
 
 
 ```{r}
+# just 4 separate plots to get the axis lines...
 
-(tsp <- ddata %>% 
-   filter(cond_ts <= 1.5) %>%
-  ggplot(aes(cond_ts, pos_displ, group = interaction(participant, tn_linear))) +
+(tsp_vis <- plotdata %>% 
+   filter(newts <= 1.5, target_class == "visible") %>%
+  ggplot(aes(newts, pos_displ, group = interaction(participant, tn_linear))) +
   geom_hline(yintercept = 0, alpha = .3, linewidth = 1, linetype = "longdash") + 
-  geom_point(alpha = .01) +
-  geom_line(aes(newts, rm_pos_displ, color = participant), data = m %>% filter(newts <= 1.5), inherit.aes = F) +
+  geom_line(aes(group = interaction(participant, tn_linear)), alpha = .006, linewidth = 3) +
+ # geom_point(alpha = .02) +
+  geom_line(aes(newts, rm_pos_displ, color = participant), data = m %>% filter(newts <= 1.5, target_class == "visible"), inherit.aes = F) +
   facet_wrap(~target_class %>% fct_rev, scales = "free_x",
-             strip.position = "bottom", 
-                labeller = as_labeller(c(visible = "", occluded = "") )) + 
-  coord_cartesian(ylim=c(-10, 10)) +
-  theme_classic() +
-  theme(strip.placement = "outside",
+             strip.position = "top", 
+             #   labeller = as_labeller(c(visible = "Target visible", occluded = "Target occluded") )
+             ) + 
+  coord_cartesian(ylim=c(-10, 10),
+                  xlim=c(-.5, 1)) +
+  sr_theme +
+  theme(#strip.placement = "outside",
+        plot.title = element_text(size = 12, face = "plain", hjust = .5),
         strip.text = element_blank(),
+     # strip.text = element_text(size=12),
         axis.text.x = element_blank(),
+        axis.title.y = element_text(size=12),
+      plot.margin = unit(c(0, 0, 0, 0), 'lines'),
         strip.background = element_blank()) +
   scale_color_manual(values = sbj_cols) +
-  labs(x = "", y = "Positional displacement (deg)", color = "Participant"))
+  labs(x = "", y = "Displacement (deg)", color = "Participant"))
 
 
-(tss <- ddata %>% 
-   filter(cond_ts <= 1.5) %>%
-  ggplot(aes(cond_ts, speed_diff, group = interaction(participant, tn_linear))) +
+(tsp_occ <- plotdata %>% 
+   filter(newts <= 1.5, target_class == "occluded") %>%
+  ggplot(aes(newts, pos_displ, group = interaction(participant, tn_linear))) +
   geom_hline(yintercept = 0, alpha = .3, linewidth = 1, linetype = "longdash") + 
-  geom_point(alpha = .01) +
-  geom_line(aes(newts, rm_speed_diff, color = participant), data = m %>% filter(newts <= 1.5), inherit.aes = F) +
+#  geom_point(alpha = .02) +
+  geom_line(aes(group = interaction(participant, tn_linear)), alpha = .006, linewidth = 3) +
+      geom_line(aes(newts, rm_pos_displ, color = participant), data = m %>% filter(newts <= 1.5, target_class == "occluded"), inherit.aes = F) +
+  facet_wrap(~target_class %>% fct_rev, scales = "free_x",
+             strip.position = "top", 
+             #   labeller = as_labeller(c(visible = "Target visible", occluded = "Target occluded") )
+             ) + 
+  coord_cartesian(ylim=c(-10, 10),
+                  xlim=c(0, 1.5)) +
+  sr_theme +
+  theme(#strip.placement = "outside",
+        plot.title = element_text(size = 12, face = "plain", hjust = .5),
+        strip.text = element_blank(),
+      #strip.text = element_text(size=12),
+        axis.text = element_blank(),
+#        axis.title.y = element_text(size=12),
+      plot.margin = unit(c(0, 0, 0, 0), 'lines'),
+        strip.background = element_blank()) +
+  scale_color_manual(values = sbj_cols) +
+  labs(x = "", y = "", color = "Participant"))
+
+
+(tss_vis <- plotdata %>% 
+   filter(newts <= 1.5, target_class == "visible") %>%
+  ggplot(aes(newts, speed_diff, group = interaction(participant, tn_linear))) +
+  geom_hline(yintercept = 0, alpha = .3, linewidth = 1, linetype = "longdash") + 
+  geom_line(aes(group = interaction(participant, tn_linear)), alpha = .006, linewidth = 3) +
+#  geom_point(alpha = .02) +
+  geom_line(aes(newts, rm_speed_diff, color = participant), data = m %>% filter(newts <= 1.5, target_class == "visible"), inherit.aes = F) +
   facet_wrap(~target_class %>% fct_rev, scales = "free_x",
              strip.position = "bottom", 
                 labeller = as_labeller(c(visible = "Time from launch (s)", occluded = "Time from occlusion onset (s)") )) + 
 #  ylim(-38,110) +
-  coord_cartesian(ylim=c(-38, 110)) +
-  theme_classic() +
+  coord_cartesian(ylim=c(-38, 110),
+                  xlim=c(-.5, 1)) +
+  sr_theme +
   theme(strip.placement = "outside",
+        strip.text = element_text(size=12),
+        axis.title.y = element_text(size=12),
+        plot.margin = unit(c(0, 0, 0, 0), 'lines'),
         strip.background = element_blank()) +
   scale_color_manual(values = sbj_cols) +
-  labs(x = "", y = "Speed difference (deg/s)", color = "Participant"))
+  labs(x = "", y = "Slippage (deg/s)", color = "Participant"))
+
+
+(tss_occ <- plotdata %>% 
+   filter(newts <= 1.5, target_class == "occluded") %>%
+  ggplot(aes(newts, speed_diff, group = interaction(participant, tn_linear))) +
+  geom_hline(yintercept = 0, alpha = .3, linewidth = 1, linetype = "longdash") + 
+  geom_line(aes(group = interaction(participant, tn_linear)), alpha = .006, linewidth = 3) +
+#  geom_point(alpha = .02) +
+  geom_line(aes(newts, rm_speed_diff, color = participant), data = m %>% filter(newts <= 1.5, target_class == "occluded"), inherit.aes = F) +
+  facet_wrap(~target_class %>% fct_rev, scales = "free_x",
+             strip.position = "bottom", 
+                labeller = as_labeller(c(visible = "Time from launch (s)", occluded = "Time from occlusion onset (s)") )) + 
+#  ylim(-38,110) +
+  coord_cartesian(ylim=c(-38, 110),
+                  xlim=c(0, 1.5)) +
+  sr_theme +
+  theme(strip.placement = "outside",
+        strip.text = element_text(size=12),
+        axis.text.y = element_blank(),
+        axis.title.y = element_text(size=12),
+        plot.margin = unit(c(0, 0, 0, 0), 'lines'),
+        strip.background = element_blank()) +
+  scale_color_manual(values = sbj_cols) +
+  labs(x = "", y = "", color = "Participant"))
 
 # scaling should match because all facets have 1.5 s of data
-(diff_ts <- ggarrange(tsp, tss, ncol = 1, #widths = c(1, 1), 
-               align = "hv", common.legend = T, legend = "right")) 
-
-
+# vertical spacing
+(diff_ts <- ggarrange(tsp_vis + labs(title = "Target visible", subtitle = "a"), 
+                      tsp_occ + labs(title = "Target occluded", subtitle = "b"), 
+                      tss_vis + labs(subtitle = "c"), 
+                      tss_occ + labs(subtitle = "d"), 
+                      ncol = 2, nrow = 2,
+                      align = "v", 
+                      common.legend = T, legend = "right" 
+                      #labels = "auto"
+                      )) 
 
 ```
 
-
-# Fig 3
 
 
 ```{r}
-lindf %>%
-  filter(target_class %in% c("visible", "occluded"), !(block %in% 2:4 & target_class == "visible")) %>%
-  group_by(participant, tn_linear, success_trial, target_class) %>%
-  summarise(avg_displ = mean((gX - target_x)),
-            sd_displ = sd((gX - target_x)),
-            avg_slippage = mean((gaze_speed - target_speed)),
-            sd_slippage = sd((gaze_speed - target_speed))) %>%
-  group_by(participant, target_class) %>%
-  summarise(avg_displ = mean(avg_displ, na.rm=T),
-            sd_displ = mean(sd_displ, na.rm=T),
-            avg_slippage = mean(avg_slippage, na.rm=T),
-            sd_slippage = mean(sd_slippage, na.rm=T),
-            sr = ((mean(as.numeric(success_trial))-1)*100) %>% round(1),
-            n = n()) %>%
-  mutate(across(is.numeric, ~round(.,2)))  %>%
-  arrange(target_class, participant)
-
-
-lindf %>%
-  filter(target_class %in% c("visible", "occluded"), !(block %in% 2:4 & target_class == "visible")) %>%
-  group_by(participant, target_class) %>%
-  summarise(avg_displ = mean((gX - target_x)),
-            sd_displ = sd((gX - target_x)),
-            avg_slippage = mean((gaze_speed - target_speed)),
-            sd_slippage = sd((gaze_speed - target_speed)),
-            n = n(),
-            n_trials = n_distinct(tn_linear)) %>%
-  mutate(across(is.numeric, ~round(.,2)))  %>%
-  arrange(target_class, participant)
-
-# means calculated from the "mean line" (not exactly the ones in Fig2, because those have the rolling smoothing)
-m %>%
-  filter(newts >= 0) %>%
-  group_by(target_class, participant) %>%
-  summarise(avg_displ = mean(m_pos_displ),
-            sd_displ = sd(m_pos_displ),
-            avg_slippage = mean(m_speed_diff),
-            sd_slippage = sd(m_speed_diff),
-            n = n()) %>%
-  mutate(across(is.numeric, ~round(.,2)))
+ggsave(filename="sr_figures/diff_ts.pdf", plot=diff_ts, width=cw, height = 14.5, units = "cm")
 
 ```
 
 
-
 # Model: Power of 2 (Fexp) + global optimization
+
+```{r}
+tgt <- lindf %>%
+  rename(tX = target_x,
+         tY = target_y) %>%
+  group_by(participant, tn_linear) %>%
+  arrange(participant, block, tn_linear, trial_ts) %>%
+  filter(target_class %in% c("visible", "occluded", "target")) %>% 
+  mutate(occ_dur = max(occ_locked_ts, na.rm=T),
+         occ_dur = ifelse(is.infinite(occ_dur), NA_real_, occ_dur)) %>%
+  filter(participant != 3, target_class == "target") %>%
+  group_by(participant, tn_linear, trial_number) %>%
+  mutate(abs_displ = abs(gX - tX),
+         displ = gX - tX,
+         ydispl = gY - tY,
+         speed_diff = gaze_speed - target_speed) %>%
+  group_by(participant, block, tn_linear, trial_number, success_trial, occ_dur) %>%
+  summarise(displ = first(gX - tX),
+            abs_displ = first(abs_displ),
+            ydispl = first(ydispl),
+            speed_diff_first = first(speed_diff),
+            target_speed = mean(target_speed, na.rm=T),
+            gaze_speed_first = first(gaze_speed),
+          target_x = first(tX)
+        ) %>%
+  ungroup %>%
+  mutate(success_trial = factor(success_trial, levels = c("0", "1")),
+         abs_speed_diff = abs(speed_diff_first)
+         ) 
+```
 
 
 ```{r}
@@ -309,19 +390,19 @@ Fexp = function(x,y, beta_d, beta_s) exp(-(beta_d*x)**2)*exp(-(beta_s*y)**2)
 
 ## DIRECT
 
-
 ```{r}
 # initial values
-x0 = c(.05, .1, .1)
+x0 = c(.1, .5, .5)
 # lower and upper
-lb = c(1.0e-10, 1.0e-10, 1.0e-10)
+lb = c(1.0e-5, 1.0e-5, 1.0e-5)
 ub = c(1, 1, 1)
-maxeval = 1000 # iterations
+maxeval = 1000 # max iterations
 
 get_direct <- function(sbj) {
   
   opts_DIRECT_L <- list("algorithm"= "NLOPT_GN_DIRECT_L",
-               "xtol_abs"=1.0e-10,
+               "ftol_abs" = 1.0e-12,
+               "ftol_rel" = 1.0e-12,
                "maxeval"=maxeval)
   res_DIRECT_L <- nloptr( x0=x0, 
                   eval_f=loss_Fexp, 
@@ -332,12 +413,13 @@ get_direct <- function(sbj) {
                  )
 }
 
+
 dir_res <- lapply(c(1,2,4:10), get_direct)
 
 res_direct <- lapply(dir_res, function(d) data.frame(p_lapse = d$solution[1], beta_d = d$solution[2], beta_s = d$solution[3], loglik = -d$objective)) %>%
   bind_rows() %>%
   mutate(participant = c(1,2,4:10)) %>%
-  select(participant, beta_d, beta_s, p_lapse, loglik)
+  dplyr::select(participant, beta_d, beta_s, p_lapse, loglik)
 
 # table of params
 res_direct %>%
@@ -354,6 +436,7 @@ res_direct %>%
 
 
 ```{r}
+
 predicted_accuracy <- function(p_lapse, beta_d, beta_s, fn, df, ...) { 
   p_chance = 1/4
   p_F = fn(df$abs_displ, df$abs_speed_diff, beta_d, beta_s, ...)
@@ -387,7 +470,8 @@ maxeval = 1000 # iterations
 get_direct <- function(sbj) {
   
   opts_DIRECT_L <- list("algorithm"= "NLOPT_GN_DIRECT_L",
-               "xtol_abs"=1.0e-10,
+               "ftol_abs" = 1.0e-12,
+               "ftol_rel" = 1.0e-12,
                "maxeval"=maxeval)
   res_DIRECT_L <- nloptr( x0=x0, 
                   eval_f=loss_FP, 
@@ -418,53 +502,21 @@ bind_rows(res_direct %>% mutate(model = "Fexp"), res_direct_FP %>% mutate(model 
 
 
 
-
 # Visualization
 
-```{r}
-(pred_obs_sbj <- tgt %>%
-  left_join(res_direct %>% mutate(participant = factor(participant))) %>%
-  mutate(pred = .25 +  (1 - .25)*(1-p_lapse) * Fexp(abs_displ, abs_speed_diff, beta_d, beta_s),
-         tq = Fexp(abs_displ, abs_speed_diff, beta_d, beta_s)) %>%
-  mutate(dbin = cut(abs_displ, breaks = c(0, 1, 5, 15, 25), include.lowest = T), # cut_number(abs_displ, 4, boundary = 0),
-         sbin = cut(abs_speed_diff, breaks = c(0, 2, 30, 300), include.lowest = T) # cut_number(abs_speed_diff, 3, boundary = 0)
-           ) %>%
-  group_by(dbin) %>% 
-  mutate(dmid = (min(abs_displ)+max(abs_displ))/2,
-         dmean = mean(abs_displ)) %>%
-  group_by(sbin) %>%
-  mutate(smid = (min(abs_speed_diff)+max(abs_speed_diff))/2,
-         smean = mean(abs_speed_diff)) %>%
-  ungroup %>%
-  group_by(participant, dbin, sbin, dmid, smid, dmean, smean) %>%
-  summarise(mean_pred = mean(pred),
-            mean_tq = mean(tq),
-            sr = mean(as.numeric(success_trial)-1),
-            n = n()) %>%
-  gather(var, value, mean_pred, sr) %>% 
-  filter(n >= 5, dbin != "(15,25]"
-         ) %>% 
-  mutate(var = ifelse(var == "mean_pred", "Predicted", "Observed")) %>%
-  ggplot(aes(dbin, value, shape = var, color = sbin, group = var)) + 
-  geom_point(position = position_dodge(width = .5)) +
-  scale_shape_manual(values = 1:2) +
-  facet_wrap(~participant) +
-  theme_classic() +
-  labs(x = "Binned displacement (deg)", y = "Success rate", shape = "", color = "Binned slippage (deg/s)"))
 
-```
 
 ```{r}
 res_means <- res_direct %>%
   summarise(across(c(p_lapse, beta_d, beta_s), mean))
 
 sr <- tgt %>%
-  filter(abs_speed_diff <= 80) %>%
-  mutate(dbin = cut(abs_displ, breaks = c(0, .5, 3, 5, 15), include.lowest = T), #cut_number(abs_displ, 5, boundary = 0),
-         slippage = cut(abs_speed_diff, breaks = c(0, 2, 10, 30, 80), include.lowest = T) # cut_number(abs_speed_diff, 3, boundary = 0)
+  filter(abs_speed_diff <= 60) %>%
+  mutate(slippage = cut(abs_speed_diff, breaks = c(0, 10, 25, 60), include.lowest = T) # cut_number(abs_speed_diff, 3, boundary = 0)
            ) %>%
-  group_by(dbin, slippage) %>%
-  filter(n() >= 10) %>%
+  group_by(slippage) %>%
+#  filter(n() >= 10) %>%
+  mutate(dbin = cut_number(abs_displ, 5, boundary = 0)) %>%
   group_by(dbin) %>% # get mid values (& compare to means)
   mutate(dmid = (min(abs_displ)+max(abs_displ))/2,
          dmean = mean(abs_displ)) %>%
@@ -480,6 +532,7 @@ sr <- tgt %>%
             n = n()) %>%
   ungroup()
 
+
 plines <- sr %>% distinct(slippage, smean, smid, smedian, smin, smax) %>%
   merge(data.frame(abs_displ = seq(0, 10, by = .1))) %>%
   cross_join(res_means) %>%
@@ -489,47 +542,241 @@ plines <- sr %>% distinct(slippage, smean, smid, smedian, smin, smax) %>%
          tq = Fexp(abs_displ, smean, beta_d, beta_s)) 
 
 
-sr2 <- tgt %>%
-  filter(abs_speed_diff <= 80) %>%
-  mutate(dbin = cut(abs_displ, breaks = c(0, .5, 3, 5, 15), include.lowest = T), 
-         slippage = cut(abs_speed_diff, breaks = c(0, 2, 10, 30, 80), include.lowest = T) 
-           ) %>%
-  group_by(dbin) %>% # get mid values (& compare to means)
-  mutate(dmid = (min(abs_displ)+max(abs_displ))/2,
-         dmedian = median(abs_displ),
-         dmean = mean(abs_displ)) %>%
+bin_n <- sr %>%
   group_by(slippage) %>%
-  mutate(smid = (min(abs_speed_diff)+max(abs_speed_diff))/2,
-         smedian = median(abs_speed_diff),
-         smean = mean(abs_speed_diff)) %>%
-  ungroup %>%
-  group_by(participant, dbin, slippage, dmid, smid, dmean, smean, dmedian, smedian) %>%
-  summarise(sr = mean(as.numeric(success_trial)-1),
-            n = n()) %>%
-  ungroup()
-
-
-plines2 <- sr2 %>% distinct(participant, slippage, smean, smedian) %>%
-  merge(data.frame(abs_displ = seq(0, 10, by = .1))) %>%
-  full_join(res_direct %>% mutate(participant = factor(participant))) %>%
-  mutate(pred = .25 + (1 - .25)*(1-p_lapse) * Fexp(abs_displ, smedian, beta_d, beta_s),
-         tq = Fexp(abs_displ, smean, beta_d, beta_s))  
-
+  summarise(total_n = sum(n)) %>%
+  mutate(label = paste0(slippage, ", n = ", total_n))
 
 (pred_obs <- sr %>%  
   filter(n >= 10) %>%
-  ggplot() + geom_line(aes(abs_displ, pred, color = participant, group = interaction(participant, slippage)), data = plines2, alpha = .7) +
-  geom_line(aes(abs_displ, pred), data = plines) +
-  geom_point(aes(dmean, sr)) +
+  ggplot() + 
+  geom_line(aes(abs_displ, pred, color = slippage), data = plines) +
+  geom_point(aes(dmean, sr, color = slippage)) +
   theme_classic() +
-  facet_wrap(~slippage, labeller = label_both) +
     xlim(0,10) +
-    scale_color_manual(values = sbj_cols) +
-    labs(x = "Displacement (deg)", y = "Predicted task accuracy", color = "Participant") +
-    scale_y_continuous(breaks = c(.25, .5, .75, 1))
+    scale_color_manual(values = ggsci::pal_d3("category20c")(20)[c(2,3,10)],
+                       breaks = bin_n$slippage,
+                       labels = bin_n$label) +
+    labs(x = "Displacement (deg)", y = "Predicted task accuracy", color = "Slippage (deg/s)") +
+    scale_y_continuous(breaks = c(0, .25, .5, .75, 1))
   )
+
 
 
 ```
 
+
+```{r}
+ggsave(filename="sr_figures/pred_obs.pdf", plot=pred_obs, width=cw*.8, height = 8, units = "cm")
+
+```
+
+
+
+# Tracking quality
+
+
+```{r}
+occ_tq <- occ %>%
+  left_join(res_direct %>% mutate(participant = factor(participant))) %>%
+  mutate(abs_displ = abs(pos_displ),
+         abs_speed_diff = abs(speed_diff)) %>%
+  mutate(tq = Fexp(abs_displ, abs_speed_diff, beta_d, beta_s))
+ 
+m_tq <- occ_tq %>%
+  mutate(newts = round(newts, 3)) %>%
+  group_by(participant, target_class, newts) %>%
+  summarise(m_tq = mean(tq, na.rm=T),
+            n = n()) %>%
+  filter(n >= 5) %>%
+  group_by(participant) %>%
+  arrange(newts) %>%
+  nest() %>% 
+  mutate(data = map(data, ~ .x %>% 
+                      mutate(rm_tq = rollapply(m_tq, 9, mean, partial = T, align = "center"))
+                    )
+         ) %>%
+  unnest()  %>%
+  ungroup
+
+grand_m <- occ_tq  %>%
+  # add "grand mean" tq
+  select(-beta_d, -beta_s) %>%
+  cross_join(res_means) %>%
+  mutate(mean_model_tq = Fexp(abs_displ, abs_speed_diff, beta_d, beta_s)) %>%
+  mutate(newts = round(newts, 3)) %>%
+  group_by(target_class, newts) %>%
+  summarise(gm_tq = mean(mean_model_tq, na.rm=T),
+            n = n()) %>%
+  filter(n >= 5) %>%
+  arrange(newts) %>%
+  nest() %>% 
+  mutate(data = map(data, ~ .x %>% 
+                      mutate(rgm_tq = rollapply(gm_tq, 9, mean, partial = T, align = "center"))
+                    )
+         ) %>%
+  unnest()  %>%
+  ungroup
+
+(tq_decay <- occ_tq %>%
+  ggplot(aes(newts, tq)) +
+  geom_line(aes(group = interaction(participant, tn_linear)), alpha = .006, linewidth = 3) +
+#  geom_jitter(alpha = .03, width = .05, height = 0)  +
+  geom_line(aes(newts, rm_tq, color = participant), data = m_tq, inherit.aes = F) +
+  geom_line(aes(newts, rgm_tq), linetype = "longdash", linewidth = .85, 
+            data = grand_m, inherit.aes = F) +
+  theme_classic() +
+    sr_theme +
+#  facet_wrap(~participant, labeller = label_both) +
+  scale_color_manual(values = sbj_cols) +
+  coord_cartesian(xlim = c(0, 1)) +
+  labs(x = "Time (s) after occlusion onset", y = "Tracking quality", color = "Participant"))
+
+
+
+```
+```{r}
+ggsave(filename="sr_figures/tq_decay.pdf", plot=tq_decay, width=cw, height = 10, units = "cm")
+```
+
+
+# Supplementary figure
+
+
+```{r}
+
+
+(dpos <- ddata %>%
+    filter(cond_ts >= 0, target_class %in% c("visible", "occluded")) %>%
+   mutate(target_timeseg = case_when(target_class == "visible" & cond_ts > .25 ~ "Target visible (>250 ms)",
+                                     target_class == "occluded" & cond_ts <= .25 ~ "Target occluded (0-250 ms)",
+                                     target_class == "occluded" & cond_ts > .25 ~ "Target occluded (>250 ms)",
+                                     T ~ NA_character_)) %>%
+   filter(!is.na(target_timeseg)) %>%
+  mutate(speed_diff = ifelse(speed_diff >= 50, 50, speed_diff),
+         speed_diff = ifelse(speed_diff <= -50, -50, speed_diff)) %>%
+  ggplot(aes(pos_displ, color = participant)) + 
+  geom_vline(xintercept = 0, alpha = .3, linewidth = 1, linetype = "longdash") + 
+  stat_density(aes(y = after_stat(count)), geom="line", position="identity", bw = .4, alpha = .7) +
+ # geom_density(aes(y = after_stat(count)), bw = .4, alpha = .7) +
+  facet_wrap(~target_timeseg %>% fct_rev, ncol=1, scales = "free_y") +
+  xlim(-10, 15) +
+  sr_theme +
+#  scale_color_manual(values = sbj_cols) +
+  scale_linetype_manual(values = c("dashed", "solid")) +
+  guides(color = guide_legend(override.aes = list(alpha = 1)),
+         linetype = guide_legend(override.aes = list(alpha = 1))) +
+  labs(x = "", y = "Count", color = "Participant") + #+ coord_flip()
+    scale_color_manual(values = sbj_cols)
+    )
+
+(dspeed <- ddata %>%
+    filter(cond_ts >= 0, target_class %in% c("visible", "occluded")) %>%
+   mutate(target_timeseg = case_when(target_class == "visible" & cond_ts > .25 ~ "Target visible (>250 ms)",
+                                     target_class == "occluded" & cond_ts <= .25 ~ "Target occluded (0-250 ms)",
+                                     target_class == "occluded" & cond_ts > .25 ~ "Target occluded (>250 ms)",
+                                     T ~ NA_character_)) %>%
+   filter(!is.na(target_timeseg)) %>%
+  mutate(speed_diff = ifelse(speed_diff >= 50, 50, speed_diff),
+         speed_diff = ifelse(speed_diff <= -50, -50, speed_diff)) %>%
+  ggplot(aes(speed_diff, color = participant)) + 
+  geom_vline(xintercept = 0, alpha = .3, linewidth = 1, linetype = "longdash") + 
+  stat_density(aes(y = after_stat(count)), geom="line", position="identity", bw = 2, alpha = .7) +
+    #  geom_density(aes(y = after_stat(count)), bw=2, alpha = .7) + #stat_bin(geom="line", binwidth = 1, position = "identity") +
+  facet_wrap(~target_timeseg %>% fct_rev, ncol=1, scales = "free_y") +
+  xlim(-60, 60) +
+   sr_theme +
+#  scale_color_manual(values = sbj_cols) +
+  scale_linetype_manual(values = c("dashed", "solid")) +
+  guides(color = guide_legend(override.aes = list(alpha = 1)),
+         linetype = guide_legend(override.aes = list(alpha = 1))) +
+  labs(x = "", y = "", color = "Participant") + #+ coord_flip()
+    scale_color_manual(values = sbj_cols)
+  )
+
+(diff_distr <- ggarrange(dpos + labs(title = "Displacement (deg)"), 
+          dspeed + labs(title = "Slippage (deg/s)"), ncol = 2, #widths = c(1, 0.05, 1), 
+               align = "hv", common.legend = T, legend = "right") )
+
+
+```
+```{r}
+ggsave(filename="sr_figures/diff_distr.pdf", plot=diff_distr, width=cw, height = 12, units = "cm")
+
+```
+
+# Supplementary figure 
+
+
+```{r}
+
+
+ds <- expand_grid(d = seq(0, 10, by = .0001), p = c(.5, .7, .9)) %>%
+  merge(res_direct) %>%
+  mutate(k = log((p - .25)/(1 - p_lapse - .25 + .25*p_lapse))) %>% #log((p - .25)/(.75 - p_lapse))) %>%
+  mutate(s = sqrt((-k - (beta_d*d)^2)/beta_s^2)) %>%
+  filter(s <= 150) %>%
+  group_by(participant) %>%
+  slice(which((row_number() +4)%% 5 == 1)) %>%
+  ungroup %>%
+  rename(Participant = participant)
+
+preddata <- expand.grid(d = seq(0, 10, by=.1), s = seq(0, 150, by = 5)#, participant = c(1,2,4:10)
+                        ) %>%
+  merge(res_direct) %>%
+  mutate(pred = Fexp(d, s, beta_d, beta_s)*(1 - .25)*(1 - p_lapse) + .25,
+         tq = Fexp(d, s, beta_d, beta_s)) %>%
+  mutate(pred90 = round(pred,2) == .90,
+         pred25 = round(pred,2) == .25) 
+
+# task accuracy pred
+(tiles <- preddata %>%
+  rename(Participant = participant) %>%
+  ggplot(aes(d, s, fill = pred)) + geom_raster(alpha = .8) +
+ #   geom_tile(aes(fill = pred, alpha = log(n)), show.legend = F) +
+  facet_wrap(~Participant, labeller = label_both) +
+  scale_fill_gradient(low = "darkorange", high = "blue", breaks = c(.25, .5, .75, 1), 
+                      limits = c(.25, 1)) +
+ # scale_color_gradient(low = "darkorange", high = "blue", breaks = c(.25, .5, .75, 1), 
+#                      limits = c(.25, 1)) +
+#    scale_alpha_continuous(range = c(.3, 1)) +
+  geom_path(aes(d, s, group = p, linetype = p %>% factor %>% fct_rev), inherit.aes = F, 
+            data = ds, size = .5, alpha = 1) +
+  sr_theme +
+    scale_linetype_manual(values = c("solid", "longdash", "dotted")) + 
+  coord_cartesian(xlim = c(0,10), ylim = c(0,150)) +
+ # theme(plot.tag.position = c(.93, .7),
+#        plot.tag = element_text(face = "plain")) +
+  labs(linetype = "", x = "Displacement (deg)", y = "Slippage (deg/s)", 
+       #fill = "",
+#       tag = "\u2014 \n\n --"
+       fill = "Predicted task accuracy"
+       ) 
+  )
+
+
+
+```
+
+```{r}
+ggsave(filename="sr_figures/tiles.pdf", plot=tiles, width=cw, height = 13, units = "cm")
+```
+
+# Supplementary table: Success rates, displacement, slippage
+
+```{r}
+
+# means calculated from the "mean line" (not exactly the ones in Fig2, because those have the rolling smoothing)
+m %>%
+  filter(newts >= 0) %>%
+  group_by(target_class, participant) %>%
+  summarise(avg_displ = mean(m_pos_displ),
+            sd_displ = sd(m_pos_displ),
+            avg_slippage = mean(m_speed_diff),
+            sd_slippage = sd(m_speed_diff),
+            n = n()) %>%
+  mutate(across(is.numeric, ~round(.,2)))
+
+
+```
 
